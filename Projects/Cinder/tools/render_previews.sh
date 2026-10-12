@@ -8,7 +8,22 @@ GODOT="${GODOT:-godot}"
 mkdir -p previews
 
 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
-"$GODOT" --headless --path . --script res://tools/bake.gd -- --force
+report="$(mktemp)"
+"$GODOT" --headless --path . --script res://tools/bake.gd -- --force --report="$report"
+# Recipes written by the Cinder AI that don't build are removed, so one bad
+# answer can never leave the game broken. Hand-made recipes are only reported.
+while read -r asset; do
+	[ -n "$asset" ] || continue
+	recipe="assets/recipes/$asset.gd"
+	if grep -q "^## Made by Cinder AI." "$recipe" 2>/dev/null; then
+		echo "removing broken AI recipe: $asset"
+		rm -f "$recipe" "$recipe.uid" "assets/vox/$asset.vox" "assets/vox/$asset.vox.import" "assets/scenes/$asset.tscn"
+		echo "$asset" >> "${REMOVED_LOG:-/dev/null}"
+	else
+		echo "WARNING: hand-made recipe $asset did not build"
+	fi
+done < "$report"
+rm -f "$report"
 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 
 shot() { # name, extra args...

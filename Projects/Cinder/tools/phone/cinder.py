@@ -10,6 +10,9 @@ the Cinderdeep voxel assets.
     status      show the last changes
     stop        stop the AI and free the phone's memory
     menu        number buttons for all of the above
+    make        (on the phone: monster) the AI invents a new monster and writes its voxel recipe
+    make 3      three new monsters
+    make a lava golem with chains   a new monster from your idea
     serve       run as a chat model for Odysseus (type the commands in chat)
 
 The AI may only change the safe settings in assets/tuning/<asset>.json, so it
@@ -25,6 +28,9 @@ import sys
 import time
 import urllib.error
 import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import forge  # noqa: E402  (new monster recipes)
 
 HOME = os.path.expanduser("~")
 CONFIG_PATH = os.path.join(HOME, ".cinder", "config.json")
@@ -93,6 +99,8 @@ def save_json(path, data):
 def config():
     cfg = dict(DEFAULTS)
     cfg.update(load_json(CONFIG_PATH, {}))
+    if os.environ.get("CINDER_REPO_DIR"):  # GitHub Actions
+        cfg["repo_dir"] = os.environ["CINDER_REPO_DIR"]
     return cfg
 
 
@@ -184,13 +192,13 @@ def ensure_model(cfg, model):
     subprocess.run(["ollama", "pull", model], check=True)
 
 
-def chat(cfg, model, system, user, temperature, json_mode):
+def chat(cfg, model, system, user, temperature, json_mode, num_ctx=2048):
     body = {
         "model": model,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
         "stream": False,
         "keep_alive": "30s",  # unload soon after, to give the memory back
-        "options": {"num_ctx": 2048, "temperature": temperature},
+        "options": {"num_ctx": num_ctx, "temperature": temperature},
     }
     if json_mode:
         body["format"] = "json"
@@ -198,7 +206,7 @@ def chat(cfg, model, system, user, temperature, json_mode):
         body["think"] = cfg["think"]
     req = urllib.request.Request(cfg["ai_url"] + "/api/chat", data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json"})
-    reply = json.loads(urllib.request.urlopen(req, timeout=300).read())
+    reply = json.loads(urllib.request.urlopen(req, timeout=300 if num_ctx <= 2048 else 3600).read())
     return (reply.get("message", {}).get("content") or "").strip()
 
 
@@ -373,6 +381,82 @@ def cmd_ask(cfg, args):
         publish(cfg)
 
 
+def brain(cfg):
+    def local_chat(model, system, user, temperature):
+        start_ai(cfg)
+        ensure_model(cfg, model)
+        return chat(cfg, model, system, user, temperature, False, num_ctx=16384)
+    return forge.Brain(cfg, local_chat, say)
+
+
+def existing_assets(cfg):
+    return "\n".join("- %s: %s" % (a, describe(cfg, a)[:160]) for a in assets(cfg))
+
+
+def make_here(cfg, ai, idea):
+    """Designs, writes and checks one monster; commits it. Returns its name."""
+    name, title, code = forge.forge(cfg, project(cfg), ai, existing_assets(cfg), idea, say)
+    path = os.path.join(project(cfg), "assets", "recipes", name + ".gd")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(code)
+    git(cfg, "add", path)
+    git(cfg, "commit", "-q", "-m", "Cinder AI: new monster %s - %s" % (name, title))
+    say("Made %s (%s)." % (title, name))
+    return name
+
+
+REQUESTS = os.path.join("assets", "requests")
+
+
+def cmd_make(cfg, args):
+    """make / make 3 / make a lava golem: brand new monsters from the AI."""
+    count = next((min(int(a), 5) for a in args if a.isdigit()), 1)
+    idea = " ".join(a for a in args if not a.isdigit()).strip()
+    sync(cfg)
+    if not forge.has_cloud(cfg) and not cfg.get("make_local"):
+        # No free cloud key here: GitHub makes it with its own free AI, so this
+        # device does no AI work at all.
+        folder = os.path.join(project(cfg), REQUESTS)
+        os.makedirs(folder, exist_ok=True)
+        path = os.path.join(folder, "%d.json" % int(time.time()))
+        save_json(path, {"idea": idea, "count": count})
+        git(cfg, "add", path)
+        git(cfg, "commit", "-q", "-m", "Cinder AI: asked GitHub for %d new monster(s)%s" % (count, (": " + idea) if idea else ""))
+        say("Asked GitHub's free AI to make %d new monster(s). They appear in about 15 minutes. Type: look" % count)
+        publish(cfg)
+        return
+    ai, made = brain(cfg), 0
+    for _ in range(count):
+        try:
+            make_here(cfg, ai, idea)
+            made += 1
+        except (forge.ForgeError, ValueError) as error:
+            say("Problem: %s" % error)
+    if made:
+        publish(cfg)
+
+
+def cmd_requests(cfg, args):
+    """GitHub Actions: makes every queued monster request, commits, no push."""
+    folder = os.path.join(project(cfg), REQUESTS)
+    pending = sorted(f for f in os.listdir(folder) if f.endswith(".json")) if os.path.isdir(folder) else []
+    if not pending and "--scheduled" in args:
+        pending = [None]  # the daily run: one new monster of the AI's own choosing
+    ai = brain(cfg)
+    for file in pending:
+        job = load_json(os.path.join(folder, file), {}) if file else {}
+        made = 0
+        for _ in range(min(int(job.get("count", 1)), 5)):
+            try:
+                make_here(cfg, ai, job.get("idea", ""))
+                made += 1
+            except (forge.ForgeError, ValueError) as error:
+                say("Problem: %s" % error)
+        if file and made:  # kept when nothing worked, so the next run tries again
+            git(cfg, "rm", "-q", os.path.join(project(cfg), REQUESTS, file))
+            git(cfg, "commit", "-q", "-m", "Cinder AI: finished request %s" % file)
+
+
 def cmd_look(cfg, args):
     url = "https://github.com/%s/tree/%s/Projects/Cinder/previews" % (cfg["github"], cfg["branch"])
     raw = "https://raw.githubusercontent.com/%s/%s/Projects/Cinder/previews/" % (cfg["github"], cfg["branch"])
@@ -419,6 +503,9 @@ def cmd_stop(cfg, args):
 
 
 HELP = """Commands:
+make - the AI invents a brand new monster and builds it
+make 3 - three new monsters
+make a lava golem with chains - a new monster from your idea
 push - the AI writes a plan, improves the next model and saves it
 push 5 - do that 5 times
 improve hound - plan and improve one model you name
@@ -433,12 +520,12 @@ def cmd_help(cfg, args):
     say(HELP)
 
 
-COMMANDS = {"help": cmd_help, "push": cmd_push, "improve": cmd_push, "ask": cmd_ask, "look": cmd_look, "undo": cmd_undo,
+COMMANDS = {"help": cmd_help, "make": cmd_make, "monster": cmd_make, "make-requests": cmd_requests, "push": cmd_push, "improve": cmd_push, "ask": cmd_ask, "look": cmd_look, "undo": cmd_undo,
             "status": cmd_status, "stop": cmd_stop}
 
 
 def cmd_menu(cfg, args):
-    buttons = [("push (improve the next model)", "push", []), ("push 5 times", "push", ["5"]),
+    buttons = [("make a new monster", "make", []), ("push (improve the next model)", "push", []), ("push 5 times", "push", ["5"]),
                ("ask for a change", "ask", []), ("look at the pictures", "look", []),
                ("undo the last change", "undo", []), ("status", "status", []), ("stop the AI", "stop", [])]
     while True:

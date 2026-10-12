@@ -8,6 +8,7 @@ on:
     paths:
       - "Projects/Cinder/**"
       - "!Projects/Cinder/previews/**"
+      - "!Projects/Cinder/assets/requests/**"
   workflow_dispatch:
 
 permissions:
@@ -40,7 +41,7 @@ jobs:
         run: |
           git config user.name "cinder-bot"
           git config user.email "cinder-bot@users.noreply.github.com"
-          git add Projects/Cinder/previews Projects/Cinder/assets/vox Projects/Cinder/assets/scenes
+          git add -A Projects/Cinder/previews Projects/Cinder/assets/vox Projects/Cinder/assets/scenes Projects/Cinder/assets/recipes
           if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
           git commit -m "Rebuild voxel models and previews [skip ci]"
           for i in 1 2 3; do git pull --rebase origin "$GITHUB_REF_NAME" && git push origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done

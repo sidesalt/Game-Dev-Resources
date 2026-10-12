@@ -23,6 +23,9 @@ improving the Cinderdeep voxel models. Claude isn't needed for this.
 
 | Type | What happens |
 |---|---|
+| `make` | The AI invents a brand new monster, builds it in voxels and saves it. |
+| `make 3` | Three new monsters. |
+| `make a lava golem with chains` | A new monster from your idea. |
 | `push` | Improves the next model a little and saves it to GitHub. |
 | `push 5` | Does that 5 times in a row. |
 | `ask make the hound glow more` | Makes the change you describe. Say the model's name. |
@@ -33,6 +36,33 @@ improving the Cinderdeep voxel models. Claude isn't needed for this.
 | `help` | Shows this list. |
 
 Anything else you type just shows the list again, so Cinder never guesses what you meant.
+
+## New monsters, made automatically for $0
+
+- **`make` costs nothing and needs no keys.** GitHub makes the monster with its own free AI
+  (GitHub Models), so your PC and phone do no AI work at all. The pictures appear in about 15 minutes.
+- **Every monster is checked before it's kept.** The recipe must pass safety rules, so it can only build voxels,
+  and must use the real voxel tools. Godot must also really build it. Problems go back to the AI to fix, up to 4
+  times. A final "polish" pass adds detail and is only kept if it still works.
+- **Daily new monster:** GitHub also makes one by itself every day, once this branch is merged into `main`.
+- **Only free models are used.** If GitHub's free daily limit runs out, Cinder tries the free models below,
+  if you've added a key. Paid models are never used.
+
+## Free cloud models in Odysseus (optional)
+
+Both work in Odysseus the same way Cinder does. In **Odysseus settings**, add an endpoint:
+
+| Name | URL | API key |
+|---|---|---|
+| OpenRouter (pick models ending in `:free`) | `https://openrouter.ai/api/v1` | free key from openrouter.ai/keys |
+| GitHub Models | `https://models.github.ai/inference` | a GitHub token with **Models: read** |
+
+**Ollama Cloud:** in PowerShell on the PC, type `ollama signin`, then `ollama pull gpt-oss:120b-cloud`. It then shows
+up in Odysseus next to your local models. The free list changes often, and `gemma4:31b-cloud` is another option.
+
+To let `make` use OpenRouter or Ollama Cloud as backups, put the keys in `%USERPROFILE%\.cinder\config.json`
+as `"keys": {"OPENROUTER_API_KEY": "...", "OLLAMA_API_KEY": "..."}`. For the GitHub runs, add them as repository
+secrets with the same names.
 
 ## How it works and why it's safe
 

@@ -1,0 +1,63 @@
+# Makes brand new Cinderdeep monsters with GitHub's free AI (GitHub Models,
+# $0, no keys), checks each one really builds in Godot, renders the pictures
+# and saves everything back. Runs when a phone/PC/Odysseus "make" request is
+# pushed, and once a day by itself (the daily run needs this file on main).
+name: Cinder make monsters
+
+on:
+  push:
+    branches: [ccr-031f1132-nxzsb1]
+    paths:
+      - "Projects/Cinder/assets/requests/**"
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  models: read
+
+concurrency:
+  group: cinder-make
+  cancel-in-progress: false
+
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ccr-031f1132-nxzsb1
+
+      - name: Install virtual screen, software graphics and the GDScript checker
+        run: |
+          sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 unzip
+          pip install --quiet "gdtoolkit==4.*"
+
+      - name: Install Godot 4.4.1
+        run: |
+          curl -fsSL -o godot.zip https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+          unzip -q godot.zip -d "$RUNNER_TEMP/godot"
+          echo "GODOT=$RUNNER_TEMP/godot/Godot_v4.4.1-stable_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Design, write and check new monsters
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional extra free AIs, used if GitHub's daily limit runs out.
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          CINDER_REPO_DIR: ${{ github.workspace }}
+        run: |
+          git config user.name "cinder-bot"
+          git config user.email "cinder-bot@users.noreply.github.com"
+          python3 Projects/Cinder/tools/phone/cinder.py make-requests ${{ github.event_name == 'schedule' && '--scheduled' || '' }}
+
+      - name: Rebuild models and render previews
+        run: Projects/Cinder/tools/render_previews.sh
+
+      - name: Save results
+        run: |
+          git add -A Projects/Cinder/previews Projects/Cinder/assets/vox Projects/Cinder/assets/scenes Projects/Cinder/assets/recipes
+          git diff --cached --quiet || git commit -m "Rebuild voxel models and previews [skip ci]"
+          for i in 1 2 3; do git pull --rebase origin ccr-031f1132-nxzsb1 && git push origin HEAD:ccr-031f1132-nxzsb1 && break; sleep 5; done

@@ -11,7 +11,8 @@ extends SceneTree
 ## Step 2: every .vox in assets/vox/ (hand-made ones too) gets a ready-to-place
 ##         scene in assets/scenes/: mesh, collision and, if it glows, a light.
 ##
-## Options (after `--`): --force, --only=campfire,barrel
+## Options (after `--`): --force, --only=campfire,barrel, --report=failed.txt (lists
+## recipes that did not build)
 
 const RECIPE_DIR := "res://assets/recipes/"
 const VOX_DIR := "res://assets/vox/"
@@ -22,9 +23,12 @@ const EMBER_LIGHT := preload("res://assets/ember_light.gd")
 func _init() -> void:
 	var force := false
 	var only := PackedStringArray()
+	var report := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--force":
 			force = true
+		elif arg.begins_with("--report="):
+			report = arg.trim_prefix("--report=")
 		elif arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=").split(",", false)
 
@@ -42,10 +46,19 @@ func _init() -> void:
 			print("keep   %s (exists; --force to regenerate)" % vox_path)
 			continue
 		var recipe: GDScript = load(RECIPE_DIR + file)
+		# A broken recipe (say, a bad AI one) is skipped and reported instead of
+		# stopping every other asset from building.
+		if recipe == null or not recipe.can_instantiate() or not recipe.has_method("build"):
+			_fail(asset, "does not load (script error)")
+			continue
 		var start := Time.get_ticks_msec()
 		var tune := Tuning.load_for(asset)
 		var seed: int = int(tune.seed) if int(tune.seed) > 0 else _const(recipe, "SEED", 1)
-		var model: VoxelModel = recipe.build(seed)
+		var built: Variant = recipe.build(seed)
+		if not built is VoxelModel or (built as VoxelModel).count_solid() == 0:
+			_fail(asset, "build() did not return a model")
+			continue
+		var model: VoxelModel = built
 		Tuning.apply(model, tune, seed)
 		var err := VoxIO.save_file(model, ProjectSettings.globalize_path(vox_path))
 		if err != OK:
@@ -61,7 +74,19 @@ func _init() -> void:
 		if not only.is_empty() and asset not in only:
 			continue
 		_bake_scene(asset)
+	if report != "":
+		var out := FileAccess.open(report, FileAccess.WRITE)
+		if out:
+			out.store_string("\n".join(failed) + ("\n" if not failed.is_empty() else ""))
 	quit()
+
+
+var failed := PackedStringArray()
+
+
+func _fail(asset: String, why: String) -> void:
+	push_error("FAILED %s: %s" % [asset, why])
+	failed.append(asset)
 
 
 func _bake_scene(asset: String) -> void:

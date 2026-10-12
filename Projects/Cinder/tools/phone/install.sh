@@ -37,7 +37,7 @@ fi
 gh auth setup-git
 
 step "4/6 Making the easy commands"
-for name in push improve ask look undo status stop menu; do
+for name in monster push improve ask look undo status stop menu; do
 	printf '#!%s/bash\nexec python3 "%s" %s "$@"\n' "$BIN" "$TOOL" "$name" > "$BIN/$name"
 	chmod +x "$BIN/$name"
 done
@@ -45,7 +45,7 @@ mkdir -p "$HOME/.cinder"
 
 step "5/6 Making home-screen buttons (needs the Termux:Widget app)"
 mkdir -p "$HOME/.shortcuts"
-for name in push menu look stop; do
+for name in monster push menu look stop; do
 	label="Cinder $(printf '%s' "$name" | sed 's/./\U&/')"
 	printf '#!%s/bash\npython3 "%s" %s\necho\nread -p "Done. Press Enter to close." _\n' "$BIN" "$TOOL" "$name" > "$HOME/.shortcuts/$label"
 	chmod +x "$HOME/.shortcuts/$label"
