@@ -413,17 +413,19 @@ def cmd_make(cfg, args):
     count = next((min(int(a), 5) for a in args if a.isdigit()), 1)
     idea = " ".join(a for a in args if not a.isdigit()).strip()
     sync(cfg)
-    if not forge.has_cloud(cfg) and not cfg.get("make_local"):
-        # No free cloud key here: GitHub makes it with its own free AI, so this
-        # device does no AI work at all.
+    if not forge.godot_path(cfg) and not cfg.get("make_local"):
+        # Without Godot here the result can't be test-built, so GitHub makes it
+        # (with free cloud AI and Godot); this device does no AI work at all.
         folder = os.path.join(project(cfg), REQUESTS)
         os.makedirs(folder, exist_ok=True)
         path = os.path.join(folder, "%d.json" % int(time.time()))
         save_json(path, {"idea": idea, "count": count})
         git(cfg, "add", path)
         git(cfg, "commit", "-q", "-m", "Cinder AI: asked GitHub for %d new monster(s)%s" % (count, (": " + idea) if idea else ""))
-        say("Asked GitHub's free AI to make %d new monster(s). They appear in about 15 minutes. Type: look" % count)
-        publish(cfg)
+        say("Asked GitHub to make %d new monster(s) with free AI." % count)
+        say("Saving to GitHub...")
+        git(cfg, "push", "-q", "origin", cfg["branch"])
+        say("Sent. The new monster and its picture appear in about 15 minutes. Type: look")
         return
     ai, made = brain(cfg), 0
     for _ in range(count):

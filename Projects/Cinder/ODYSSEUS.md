@@ -39,13 +39,14 @@ Anything else you type just shows the list again, so Cinder never guesses what y
 
 ## New monsters, made automatically for $0
 
-- **`make` costs nothing and needs no keys.** GitHub makes the monster with its own free AI
-  (GitHub Models), so your PC and phone do no AI work at all. The pictures appear in about 15 minutes.
+- **`make` costs nothing and needs no keys.** GitHub makes the monster using OVHcloud's free AI tier
+  (no account needed), so your PC and phone do no AI work at all. The pictures appear in about 15 minutes.
 - **Every monster is checked before it's kept.** The recipe must pass safety rules, so it can only build voxels,
   and must use the real voxel tools. Godot must also really build it. Problems go back to the AI to fix, up to 4
   times. A final "polish" pass adds detail and is only kept if it still works.
 - **Daily new monster:** GitHub also makes one by itself every day, once this branch is merged into `main`.
-- **Only free models are used.** If GitHub's free daily limit runs out, Cinder tries the free models below,
+- **The AI is coached** by `docs/VOXEL_ASSET_GUIDE.md`. Edit it to teach it your taste.
+- **Only free models are used.** If OVHcloud is busy or down, Cinder tries the free models below,
   if you've added a key. Paid models are never used.
 
 ## Free cloud models in Odysseus (optional)
@@ -55,7 +56,7 @@ Both work in Odysseus the same way Cinder does. In **Odysseus settings**, add an
 | Name | URL | API key |
 |---|---|---|
 | OpenRouter (pick models ending in `:free`) | `https://openrouter.ai/api/v1` | free key from openrouter.ai/keys |
-| GitHub Models | `https://models.github.ai/inference` | a GitHub token with **Models: read** |
+| OVHcloud (free, no account) | `https://oai.endpoints.kepler.ai.cloud.ovh.net/v1` | leave empty (a made-up key is refused) |
 
 **Ollama Cloud:** in PowerShell on the PC, type `ollama signin`, then `ollama pull gpt-oss:120b-cloud`. It then shows
 up in Odysseus next to your local models. The free list changes often, and `gemma4:31b-cloud` is another option.

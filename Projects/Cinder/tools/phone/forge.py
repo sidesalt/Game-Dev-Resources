@@ -7,9 +7,9 @@ voxel recipe in assets/recipes/, in the same style as cinder_hound.gd.
     4. fix      problems are sent back to the AI, up to a few times
     5. polish   one more pass that adds detail, kept only if it still passes
 
-Only ever uses free ($0) models: GitHub Models first (free with the GitHub
-token, nothing to sign up for), then OpenRouter's :free models and Ollama
-Cloud's free models when a key is set, then the local Ollama model. Only uses Python's standard library.
+Only ever uses free ($0) models: OVHcloud AI Endpoints first (a free tier
+with no key or sign-up), then OpenRouter's :free models and Ollama Cloud's
+free models when a key is set, then the local Ollama model. Only uses Python's standard library.
 """
 import json
 import os
@@ -17,6 +17,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 import urllib.error
 import urllib.request
 
@@ -25,14 +26,12 @@ import urllib.request
 OLLAMA_CLOUD_MODELS = ["gpt-oss:120b", "gemma4:31b", "nemotron-3-ultra", "qwen3-coder:480b", "deepseek-v4-flash"]
 OPENROUTER_LIKES = ["qwen3-coder", "gpt-oss-120b", "nemotron", "deepseek", "gemma-4", "llama-4", "glm", "kimi"]
 
-GITHUB_LIKES = ["openai/gpt-4.1", "deepseek/deepseek-v3-0324", "openai/gpt-4o", "meta/llama-4-maverick-17b-128e-instruct-fp8",
-                "mistral-ai/codestral-2501", "openai/gpt-4.1-mini"]
+OVH_LIKES = ["gpt-oss-120b", "Qwen3.5-397B-A17B", "Qwen3.8-27B", "Qwen3.6-27B", "Meta-Llama-3_3-70B-Instruct",
+             "Mistral-Small-3.2-24B-Instruct-2506"]
 
 PROVIDERS = [
-    # Free tier: about 50 requests a day, 8k tokens in and 4k out per request.
-    {"name": "GitHub Models", "url": "https://models.github.ai/inference", "key": "GITHUB_TOKEN",
-     "models": "github-free", "max_tokens": 4000,
-     "max_input_chars": 26000},
+    # Anonymous free tier: no key, about 2 requests a minute per model.
+    {"name": "OVHcloud", "url": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1", "key": None, "models": "ovh-free"},
     {"name": "OpenRouter", "url": "https://openrouter.ai/api/v1", "key": "OPENROUTER_API_KEY", "models": "openrouter-free"},
     {"name": "Ollama Cloud", "url": "https://ollama.com/v1", "key": "OLLAMA_API_KEY", "models": OLLAMA_CLOUD_MODELS},
 ]
@@ -76,13 +75,14 @@ def key_for(cfg, name):
     return os.environ.get(name) or cfg.get("keys", {}).get(name, "")
 
 
-def has_cloud(cfg):
-    return any(key_for(cfg, p["key"]) for p in PROVIDERS)
+def godot_path(cfg):
+    return cfg.get("godot") or os.environ.get("GODOT") or shutil.which("godot") or shutil.which("godot4")
 
 
 def _post(url, key, body, timeout):
-    headers = {"Content-Type": "application/json", "Authorization": "Bearer " + key,
-               "HTTP-Referer": "https://github.com/sidesalt/Game-Dev-Resources", "X-Title": "Cinderdeep"}
+    headers = {"Content-Type": "application/json", "HTTP-Referer": "https://github.com/sidesalt/Game-Dev-Resources", "X-Title": "Cinderdeep"}
+    if key:
+        headers["Authorization"] = "Bearer " + key
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
     return json.loads(urllib.request.urlopen(req, timeout=timeout).read())
 
@@ -101,20 +101,14 @@ def openrouter_free(url, key):
     return [m["id"] for m in sorted(free, key=rank)][:6]
 
 
-def github_free(key):
-    """GitHub's model catalogue, strongest general models first. Reasoning
-    models are skipped: their free limit is only a few requests a day."""
+def ovh_free(url):
+    """OVHcloud's live chat models, the preferred ones first."""
     try:
-        req = urllib.request.Request("https://models.github.ai/catalog/models",
-                                     headers={"Authorization": "Bearer " + key, "Accept": "application/json"})
-        live = [m.get("id", "") for m in json.loads(urllib.request.urlopen(req, timeout=30).read())
-                if m.get("rate_limit_tier") in ("high", "low")]
+        data = json.loads(urllib.request.urlopen(url + "/models", timeout=30).read()).get("data", [])
+        live = [m.get("id", "") for m in data]
     except (urllib.error.URLError, OSError, ValueError, AttributeError):
-        live = []
-    if not live:
-        return GITHUB_LIKES
-    liked = [m for m in GITHUB_LIKES if m in live]
-    return liked + [m for m in live if m not in liked and "embed" not in m][:4]
+        return OVH_LIKES
+    return [m for m in OVH_LIKES if m in live] or OVH_LIKES
 
 
 class Brain:
@@ -132,8 +126,8 @@ class Brain:
             if p.get("key") and not key:
                 continue
             models = p["models"]
-            if models == "github-free":
-                models = github_free(key)
+            if models == "ovh-free":
+                models = ovh_free(p["url"])
             elif models == "openrouter-free":
                 try:
                     models = openrouter_free(p["url"], key)
@@ -143,6 +137,17 @@ class Brain:
             for model in models:
                 yield (dict(p, key_value=key), model)
 
+    def _post_patiently(self, provider, body):
+        """Free tiers allow a few requests a minute: on "too many", wait and retry."""
+        for wait in (35, 65, 0):
+            try:
+                return _post(provider["url"] + "/chat/completions", provider["key_value"], body, timeout=900)
+            except urllib.error.HTTPError as error:
+                if error.code != 429 or not wait:
+                    raise
+                self.say("  %s is busy, waiting %d seconds..." % (provider["name"], wait))
+                time.sleep(wait)
+
     def ask(self, system, user, temperature=0.6):
         for provider, model in self.candidates():
             if len(system) + len(user) > provider.get("max_input_chars", 10 ** 9):
@@ -150,7 +155,7 @@ class Brain:
             body = {"model": model, "temperature": temperature, "max_tokens": provider.get("max_tokens", 10000),
                     "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
             try:
-                reply = _post(provider["url"] + "/chat/completions", provider["key_value"], body, timeout=600)
+                reply = self._post_patiently(provider, body)
                 text = (reply.get("choices") or [{}])[0].get("message", {}).get("content") or ""
             except urllib.error.HTTPError as error:
                 self.say("  %s %s said no (%d), trying the next one." % (provider["name"], model, error.code))
@@ -169,7 +174,8 @@ class Brain:
             model = self.cfg.get("make_model") or self.cfg["model"]
             self.say("No free cloud AI answered, using the local AI %s (slower, simpler results)." % model)
             return self.local_chat(model, system, user, temperature)
-        raise ForgeError("No AI answered. Add a free OpenRouter or Ollama key (see ODYSSEUS.md).")
+        raise ForgeError("No free AI answered right now. Try again later, or add a free OpenRouter or Ollama key "
+                         "(see ODYSSEUS.md).")
 
 
 # ---------------------------------------------------------------- prompts
@@ -235,11 +241,20 @@ def concept_prompt(root, existing, idea):
     return system, user
 
 
+def guide(root):
+    """docs/VOXEL_ASSET_GUIDE.md: the art direction the AI is coached with."""
+    try:
+        return read(root, "docs", "VOXEL_ASSET_GUIDE.md").split("\n", 2)[-1]
+    except OSError:
+        return ""
+
+
 def code_prompt(root, plan, example=True):
     pal, _ = palette(root)
     hound = read(root, "assets", "recipes", "cinder_hound.gd") if example else "(same style as before)"
     system = ("You write GDScript 4 voxel recipes for the Cinderdeep game. You write correct, statically typed "
-              "code that runs first time, and you make highly detailed, beautiful models.\n\n" + RULES)
+              "code that runs first time, and you make highly detailed, beautiful models.\n\n" + RULES
+              + "\n\nAsset guide from the art director (follow it closely):\n" + guide(root))
     user = ("VoxelBuilder API:\n```gdscript\n%s\n```\n\nPalette:\n```gdscript\n%s\n```\n\n"
             "Example recipe (match its style and quality):\n```gdscript\n%s\n```\n\n"
             "Write the recipe for this monster:\n%s") % (api_reference(root), pal, hound, json.dumps(plan, indent=1))
@@ -304,10 +319,19 @@ def static_problems(code, ramps):
     for word in ("OS.", "FileAccess", "DirAccess", "Engine.", "ClassDB", "JavaScriptBridge", "Expression"):
         if word in body:
             problems.append("`%s` is not allowed in a recipe." % word.rstrip("."))
+    for name in sorted(set(re.findall(r"var (\w+)\s*:?=\s*b\.ramp\(", body))):
+        # A ramp is a list of colours; shapes need one colour or a painter lambda.
+        if re.search(r"b\.(?:box|ellipsoid|tube|column|line|set_v)\((?:[^()]|\([^()]*\))*,\s*%s\s*(?:,[^,()]*)?\)" % name, body):
+            problems.append("`%s` is a whole ramp used as paint. Use b.pick(%s, t, jitter) in a lambda or "
+                            "b.noisy(%s) instead." % (name, name, name))
     shapes = sum(body.count(s) for s in SHAPES)
     if shapes < MIN_SHAPES:
         problems.append("Only %d shape calls. Add much more detail: at least %d (horns, claws, plates, teeth, "
                         "spikes, cracks...)." % (shapes, MIN_SHAPES))
+    boxes, organic = body.count("b.box("), body.count("b.ellipsoid(") + body.count("b.tube(")
+    if boxes > organic:
+        problems.append("Too boxy (%d boxes, %d ellipsoids/tubes). Build bodies, heads and limbs from ellipsoids and "
+                        "tapered tubes; keep boxes for armour plates and blades." % (boxes, organic))
     return list(dict.fromkeys(problems))
 
 
@@ -328,7 +352,7 @@ def gdparse_problems(code):
 
 def godot_problems(cfg, root, name):
     """Builds the recipe for real when Godot is installed (GitHub always has it)."""
-    godot = cfg.get("godot") or os.environ.get("GODOT") or shutil.which("godot") or shutil.which("godot4")
+    godot = godot_path(cfg)
     if not godot:
         return None
     subprocess.run([godot, "--headless", "--path", root, "--import"], capture_output=True, timeout=600)
@@ -413,10 +437,11 @@ def forge(cfg, root, brain, existing, idea, say, tries=4):
                          "more striking without breaking any rule: more secondary forms, finer surface detail, "
                          "better colour variation and glow. Reply with the whole file." % good, temperature=0.4)
     better = finish(extract_code(polished), plan)
-    if not (static_problems(better, ramps) or gdparse_problems(better) or check_in_godot(cfg, root, name, better)):
+    issues = static_problems(better, ramps) or gdparse_problems(better) or check_in_godot(cfg, root, name, better)
+    if not issues:
         good = better
     else:
-        say("  The polished version had problems, keeping the working one.")
+        say("  The polished version had problems (%s), keeping the working one." % issues[0][:120])
     return name, plan.get("title", name), good
 
 

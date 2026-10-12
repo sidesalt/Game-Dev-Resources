@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/sidesalt/Game-Dev-Resources/ccr-031
 
 | Type this | What happens |
 |---|---|
-| `monster` | A brand new monster, designed and built for free by GitHub's AI (see ODYSSEUS.md). |
+| `monster` | A brand new monster, designed and built for free on GitHub (see ODYSSEUS.md). |
 | `monster a lava golem` | A new monster from your idea. |
 | `push` | The AI improves the next model a little and saves it. |
 | `push 5` | It does that 5 times in a row. |

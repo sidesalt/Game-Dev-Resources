@@ -1,5 +1,5 @@
-# Makes brand new Cinderdeep monsters with GitHub's free AI (GitHub Models,
-# $0, no keys), checks each one really builds in Godot, renders the pictures
+# Makes brand new Cinderdeep monsters with free AI (OVHcloud's keyless free
+# tier, $0, no keys), checks each one really builds in Godot, renders the pictures
 # and saves everything back. Runs when a phone/PC/Odysseus "make" request is
 # pushed, and once a day by itself (the daily run needs this file on main).
 name: Cinder make monsters
@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: write
-  models: read
 
 concurrency:
   group: cinder-make
@@ -43,7 +42,6 @@ jobs:
 
       - name: Design, write and check new monsters
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Optional extra free AIs, used if GitHub's daily limit runs out.
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
