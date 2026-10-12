@@ -1,7 +1,7 @@
 # Cinder for Odysseus: one-time setup on your Windows AI PC.
 #
 # Paste this line into PowerShell (Win + R, type powershell, Enter):
-#   irm https://raw.githubusercontent.com/iteatsthesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/odysseus/install-cinder.ps1 | iex
+#   irm https://raw.githubusercontent.com/sidesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/odysseus/install-cinder.ps1 | iex
 #
 # It adds a small local "cinder" model that Odysseus can chat with. In Odysseus
 # you then type: push, ask ..., look, undo, status, stop, help.
@@ -9,7 +9,7 @@
 
 $ErrorActionPreference = "Stop"
 $Branch  = "ccr-031f1132-nxzsb1"
-$Repo    = "https://github.com/iteatsthesalt/Game-Dev-Resources.git"
+$Repo    = "https://github.com/sidesalt/Game-Dev-Resources.git"
 $Home2   = $env:USERPROFILE
 $Dir     = Join-Path $Home2 "Cinder\Game-Dev-Resources"
 $CfgDir  = Join-Path $Home2 ".cinder"
@@ -45,6 +45,7 @@ Write-Host "Using $Python"
 
 Step "3/5 Getting the Cinder project"
 if (Test-Path (Join-Path $Dir ".git")) {
+    git -C $Dir remote set-url origin $Repo  # follows the repo if it moved
     git -C $Dir fetch -q origin $Branch
     git -C $Dir checkout -q $Branch
     git -C $Dir pull -q --rebase --autostash origin $Branch

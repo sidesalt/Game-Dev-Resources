@@ -8,7 +8,7 @@ Your phone's own AI keeps improving the Cinderdeep voxel models. You don't need 
 2. Open Termux, paste this line, and press Enter:
 
    ```
-   curl -fsSL https://raw.githubusercontent.com/iteatsthesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/phone/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/sidesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/phone/install.sh | bash
    ```
 
 3. When it shows a code, open the link, sign in to GitHub and type the code. That's the only question it asks.
@@ -16,7 +16,7 @@ Your phone's own AI keeps improving the Cinderdeep voxel models. You don't need 
 To get the Claude command line as well, use this line instead:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/iteatsthesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/phone/install.sh | bash -s -- --claude
+curl -fsSL https://raw.githubusercontent.com/sidesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/phone/install.sh | bash -s -- --claude
 ```
 
 ## The commands

@@ -1,13 +1,13 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Cinder phone AI installer for Termux. Run this one line in Termux:
 #
-#   curl -fsSL https://raw.githubusercontent.com/iteatsthesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/phone/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/sidesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/phone/install.sh | bash
 #
 # It installs the AI and the easy commands: push, ask, look, undo, status, stop, menu.
 # Add  --claude  at the end (after "bash -s --") to also install the Claude command line.
 set -e
 BRANCH="ccr-031f1132-nxzsb1"
-REPO="https://github.com/iteatsthesalt/Game-Dev-Resources.git"
+REPO="https://github.com/sidesalt/Game-Dev-Resources.git"
 DIR="$HOME/Game-Dev-Resources"
 BIN="${PREFIX:-/usr}/bin"
 TOOL="$DIR/Projects/Cinder/tools/phone/cinder.py"
@@ -20,6 +20,7 @@ pkg install -y git python ollama gh termux-api
 
 step "2/6 Getting the Cinder project"
 if [ -d "$DIR/.git" ]; then
+	git -C "$DIR" remote set-url origin "$REPO"  # follows the repo if it moved
 	git -C "$DIR" fetch -q origin "$BRANCH"
 	git -C "$DIR" checkout -q "$BRANCH"
 	git -C "$DIR" pull -q --rebase origin "$BRANCH"

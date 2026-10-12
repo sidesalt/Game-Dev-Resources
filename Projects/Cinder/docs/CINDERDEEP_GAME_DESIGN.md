@@ -1,7 +1,7 @@
 # Cinderdeep: 3D voxel remake, game design report
 
 *Written 2026-10-12. This is a safety copy of the whole idea. It is also saved in GitHub at
-`iteatsthesalt/Game-Dev-Resources`, branch `ccr-031f1132-nxzsb1`, file `Projects/Cinder/docs/CINDERDEEP_GAME_DESIGN.md`.*
+`sidesalt/Game-Dev-Resources`, branch `ccr-031f1132-nxzsb1`, file `Projects/Cinder/docs/CINDERDEEP_GAME_DESIGN.md`.*
 
 ---
 

@@ -8,7 +8,7 @@ improving the Cinderdeep voxel models. Claude isn't needed for this.
 1. Press **Win + R**, type `powershell`, and press **Enter**.
 2. Paste this line and press **Enter**:
    ```
-   irm https://raw.githubusercontent.com/iteatsthesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/odysseus/install-cinder.ps1 | iex
+   irm https://raw.githubusercontent.com/sidesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/odysseus/install-cinder.ps1 | iex
    ```
    If a GitHub sign-in window opens, sign in. Cinder needs that to save changes.
 3. In **Odysseus settings**, where your **Bitez fleet** endpoint is listed, add a new endpoint:

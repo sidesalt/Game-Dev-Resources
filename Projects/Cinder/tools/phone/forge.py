@@ -82,7 +82,7 @@ def has_cloud(cfg):
 
 def _post(url, key, body, timeout):
     headers = {"Content-Type": "application/json", "Authorization": "Bearer " + key,
-               "HTTP-Referer": "https://github.com/iteatsthesalt/Game-Dev-Resources", "X-Title": "Cinderdeep"}
+               "HTTP-Referer": "https://github.com/sidesalt/Game-Dev-Resources", "X-Title": "Cinderdeep"}
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
     return json.loads(urllib.request.urlopen(req, timeout=timeout).read())
 

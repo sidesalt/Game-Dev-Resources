@@ -38,7 +38,7 @@ STATE_PATH = os.path.join(HOME, ".cinder", "state.json")
 DEFAULTS = {
     "repo_dir": os.path.join(HOME, "Game-Dev-Resources"),
     "branch": "ccr-031f1132-nxzsb1",
-    "github": "iteatsthesalt/Game-Dev-Resources",
+    "github": "sidesalt/Game-Dev-Resources",
     "ai_url": "http://127.0.0.1:11434",
     "model": "qwen2.5:1.5b",
     "small_model": "qwen2.5:0.5b",
