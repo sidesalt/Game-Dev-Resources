@@ -221,6 +221,8 @@ RULES = """Rules for the recipe file:
   b.shade(...) up and down passes and a b.recolor(...) pass for glowing cracks or markings, and bright eyes.
 - Keep it readable from far away: a strong silhouette, dark soot/ash body, ember/flame/lava accents.
 - Every part must touch the body (no floating pieces). Keep static typing like the example.
+- Indent with tabs only. Type loop variables (`for side: float in [-1.0, 1.0]:`); `:=` only works when the value
+  has a known type, otherwise write the type (`var x: float = cx + side * 3.0`).
 - Reply with only the complete file in one ```gdscript code block.""" % (MAX_AXIS, MIN_SHAPES)
 
 
@@ -306,7 +308,10 @@ def static_problems(code, ramps):
         problems.append("`.%s()` is not allowed in a recipe." % name)
     if "@" in body:
         problems.append("Do not use annotations such as @tool or @export.")
-    for name in sorted(set(re.findall(r"\b([A-Z][A-Za-z0-9_]*)\b", body))):
+    if re.search(r"\bCallable\s*\(", body):
+        problems.append("Do not construct `Callable(...)`; use lambdas (`func(p: Vector3i) -> int:`).")
+    # `Callable` is fine as a type label (var paint: Callable = func...), never as a call.
+    for name in sorted(set(re.findall(r"\b([A-Z][A-Za-z0-9_]*)\b", re.sub(r"(?<=[:>])\s*Callable\b", " ", body)))):
         if name in ALLOWED_TYPES or re.fullmatch(r"[A-Z][A-Z0-9_]*", name):
             continue
         problems.append("`%s` is not allowed in a recipe. Use only VoxelBuilder, CinderPalette and vector maths." % name)
@@ -355,7 +360,8 @@ def godot_problems(cfg, root, name):
     godot = godot_path(cfg)
     if not godot:
         return None
-    subprocess.run([godot, "--headless", "--path", root, "--import"], capture_output=True, timeout=600)
+    if not os.path.exists(os.path.join(root, ".godot", "global_script_class_cache.cfg")):
+        subprocess.run([godot, "--headless", "--path", root, "--import"], capture_output=True, timeout=900)
     result = subprocess.run([godot, "--headless", "--path", root, "--script", "res://tools/bake.gd", "--",
                              "--force", "--only=" + name], capture_output=True, text=True, timeout=600)
     log = result.stdout + result.stderr
@@ -364,7 +370,8 @@ def godot_problems(cfg, root, name):
         return []
     if built:
         return ["The model only has %s voxels. Make it bigger and much more detailed." % built.group(1)]
-    errors = [line.strip() for line in log.splitlines() if "ERROR" in line or "error" in line.lower()]
+    errors = [line.strip() for line in log.splitlines()
+              if ("ERROR" in line or "error" in line.lower()) and "FAILED " not in line]
     return ["Godot could not build it: " + " | ".join(errors[-4:])[:600]]
 
 
@@ -394,9 +401,19 @@ def header(plan):
     return "\n".join(out)
 
 
+def tabs(code):
+    """Godot refuses files that mix tabs and spaces, so indent with tabs only."""
+    out = []
+    for line in code.splitlines():
+        body = line.lstrip(" \t")
+        indent = line[:len(line) - len(body)].replace("\t", "    ")
+        out.append("\t" * ((len(indent) + 2) // 4) + body if body else "")
+    return "\n".join(out)
+
+
 def finish(code, plan):
     """Puts our own header on the file so every AI recipe looks the same."""
-    lines = code.splitlines()
+    lines = tabs(code).splitlines()
     rest = [line for line in lines[1:] if not line.startswith("##")] if lines else []
     while rest and not rest[0].strip():
         rest.pop(0)
@@ -417,7 +434,7 @@ def forge(cfg, root, brain, existing, idea, say, tries=4):
     lean = code_prompt(root, plan, example=False)[1]  # fix rounds: room for the last version instead
     say("Writing the voxel recipe...")
     reply = brain.ask(system, user, temperature=0.4)
-    good = None
+    good = last_bad = None
     for attempt in range(tries):
         code = finish(extract_code(reply), plan)
         problems = static_problems(code, ramps) or gdparse_problems(code)
@@ -426,10 +443,18 @@ def forge(cfg, root, brain, existing, idea, say, tries=4):
         if not problems:
             good = code
             break
-        say("  Check %d found %d problem(s), asking the AI to fix them." % (attempt + 1, len(problems)))
+        say("  Check %d found %d problem(s), asking the AI to fix them: %s" % (attempt + 1, len(problems),
+                                                                         problems[0][:160]))
+        last_bad = code
         reply = brain.ask(system, lean + "\n\nYour last version:\n```gdscript\n%s```\n\nFix these problems and "
                           "reply with the whole corrected file:\n- %s" % (code, "\n- ".join(problems)), temperature=0.3)
     if not good:
+        try:  # kept for whoever improves the guide or the checks
+            os.makedirs(os.path.join(os.path.expanduser("~"), ".cinder"), exist_ok=True)
+            with open(os.path.join(os.path.expanduser("~"), ".cinder", "last_failed.gd"), "w", encoding="utf-8") as f:
+                f.write(last_bad or "")
+        except OSError:
+            pass
         raise ForgeError("The AI could not write a working %s after %d tries, so nothing was saved." % (name, tries))
 
     say("Polishing: adding more detail...")
@@ -453,6 +478,8 @@ def check_in_godot(cfg, root, name, code):
         problems = godot_problems(cfg, root, name)
     finally:
         os.remove(path)
+        if os.path.exists(path + ".uid"):  # Godot adds one for every script it loads
+            os.remove(path + ".uid")
         for leftover in (os.path.join(root, "assets", "vox", name + ".vox"),
                          os.path.join(root, "assets", "scenes", name + ".tscn")):
             if os.path.exists(leftover):

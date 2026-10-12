@@ -326,7 +326,7 @@ def sync(cfg):
 def publish(cfg):
     say("Saving to GitHub...")
     git(cfg, "push", "-q", "origin", cfg["branch"])
-    say("Saved. New pictures appear in about 5 minutes. Type: look")
+    say("Saved. New pictures appear on GitHub in about 5-10 minutes. Type: look")
 
 
 def cmd_push(cfg, args):

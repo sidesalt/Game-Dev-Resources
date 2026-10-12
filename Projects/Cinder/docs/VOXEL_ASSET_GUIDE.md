@@ -40,5 +40,7 @@ This guide is sent to the AI with every `make` request. Edit it to teach the AI 
   `b.recolor(...)` pass for glowing cracks, using noise on exposed voxels, as the hound's spine does.
 
 ## Common mistakes the checks reject
+- Godot refuses `var x := cx + side * 3.0` when `side` comes from an untyped loop. Write
+  `for side: float in [-1.0, 1.0]:` or give the type (`var x: float = ...`). Indent with tabs only.
 - Passing a ramp as paint. Boxes for organic bodies. Eyes hidden inside the head. Parts floating in the air or past
   the grid. Fewer than about 18 shape calls. Calling anything outside VoxelBuilder, CinderPalette and vector maths.
