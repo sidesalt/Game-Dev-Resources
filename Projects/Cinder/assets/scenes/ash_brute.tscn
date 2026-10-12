@@ -1,0 +1,25 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="ArrayMesh" path="res://assets/vox/ash_brute.vox" id="1_obdul"]
+[ext_resource type="Script" path="res://assets/ember_light.gd" id="2_r6b2e"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_4xo8d"]
+points = PackedVector3Array(0.524586, 1.10024, 0.0528597, -0.512649, 1.10024, 0.0528597, -0.234253, -0.0126492, 0.103407, -0.107746, 1.47966, 0.356361, 0.271572, 0.164539, -0.149493, -0.107746, 1.55573, -0.0988912, 0.220908, -0.0126492, 0.103407, -0.208405, 0.0744596, -0.125, 0.493472, 1.3438, -0.0407049, 0.0945027, 1.4039, 0.356361, 0.090495, 0.531498, -0.1875, -0.474654, 1.31243, -0.0625, 0.220908, 1.60645, 0.103407, -0.461884, 0.670586, 0.0781333, -0.512649, 1.35319, 0.0781333, 0.448641, 0.670586, 0.0781333, 0.524586, 1.35319, 0.0781333, 0.271572, 1.50518, -0.0736175, -0.0318011, 1.30279, 0.356361, 0.524586, 1.10024, -0.0482894, 0.271572, -0.0126492, 0.0781333, -0.0938, 0.574977, -0.165973, 0.486591, 1.31243, -0.0625, -0.158308, 1.55573, -0.0482894, 0.145065, 1.32815, 0.331033, 0.242992, 0.0744596, -0.125, -0.399237, 0.6875, -0.0532976, -0.107746, 1.4039, 0.356361, -0.259534, -0.0126492, 0.0781333, 0.145065, 1.42926, 0.331033, 0.524586, 1.15096, 0.0781333, 0.220908, 1.60645, 0.0528597)
+
+[node name="AshBrute" type="Node3D"]
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_obdul")
+
+[node name="Body" type="StaticBody3D" parent="."]
+
+[node name="Shape" type="CollisionShape3D" parent="Body"]
+shape = SubResource("ConvexPolygonShape3D_4xo8d")
+
+[node name="EmberLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0030719, 1.19148, 0.0468751)
+light_color = Color(0.984301, 0.587762, 0.325747, 1)
+light_energy = 0.753872
+omni_range = 1.51614
+omni_attenuation = 1.4
+script = ExtResource("2_r6b2e")

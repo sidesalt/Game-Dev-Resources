@@ -1,0 +1,16 @@
+[remap]
+
+importer="cinder_voxel.vox_mesh"
+type="ArrayMesh"
+uid="uid://dxgo1lwsebp6q"
+path="res://.godot/imported/ash_brute.vox-60153df59af3a5e681d63354d60a86ec.mesh"
+
+[deps]
+
+source_file="res://assets/vox/ash_brute.vox"
+dest_files=["res://.godot/imported/ash_brute.vox-60153df59af3a5e681d63354d60a86ec.mesh"]
+
+[params]
+
+voxel_size=0.03125
+pivot=Vector3(0.5, 0, 0.5)
