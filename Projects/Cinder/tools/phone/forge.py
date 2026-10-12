@@ -23,7 +23,7 @@ import urllib.request
 
 # Free models move around a lot, so these are preferences, not requirements:
 # the first one that answers is used. OpenRouter's list is read live.
-OLLAMA_CLOUD_MODELS = ["gpt-oss:120b", "gemma4:31b", "nemotron-3-ultra", "qwen3-coder:480b", "deepseek-v4-flash"]
+OLLAMA_CLOUD_MODELS = ["gpt-oss:120b", "nemotron-3-ultra", "nemotron-3-super", "gemma4:31b", "gpt-oss:20b"]  # free 2026-10-12
 OPENROUTER_LIKES = ["qwen3-coder", "gpt-oss-120b", "nemotron", "deepseek", "gemma-4", "llama-4", "glm", "kimi"]
 
 OVH_LIKES = ["gpt-oss-120b", "Qwen3.5-397B-A17B", "Qwen3.8-27B", "Qwen3.6-27B", "Meta-Llama-3_3-70B-Instruct",
