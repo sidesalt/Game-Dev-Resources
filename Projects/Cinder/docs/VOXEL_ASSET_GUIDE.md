@@ -29,6 +29,17 @@ This guide is sent to the AI with every `make` request. Edit it to teach the AI 
 - Eyes sit **on the surface** at the front of the head: put them at the head's front edge (centre z + radius z - 1),
   2-3 voxels apart. Make them the brightest voxels, with a darker voxel just behind.
 
+## Lessons from the AI's first monsters (Ash Brute, 2026-10-12)
+- Hands and feet grow out of the arm and leg tubes: a fist is an ellipsoid overlapping the end of the forearm, with
+  tube fingers or claws. A box floating beside the arm reads as a brick.
+- "Hunched" means the chest sits forward of the hips (chest centre z = hips z + 6 or more) and the head hangs low
+  and forward. Shoulders are wider than the hips on brutes.
+- The asked-for signature feature (lava cracks, a burning back) must be big and visible in the preview, which
+  views the model from the front, 30° to its left and a little above. Put it on the top, front or sides, not only
+  the back.
+- Stray glowing specks floating above the head ruin the read. Finish with `b.remove_floating()` as the very
+  last shape step (before shading), and keep eyes touching the head.
+
 ## Painting
 - A shape's `paint` is ONE palette index or a lambda `func(p: Vector3i) -> int`. Never pass a whole ramp (the value
   from `b.ramp(...)`): use `b.pick(ramp, t, jitter)` inside a lambda, or `b.noisy(ramp, ...)`.

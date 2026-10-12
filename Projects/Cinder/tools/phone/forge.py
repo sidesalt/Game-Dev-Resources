@@ -329,6 +329,8 @@ def static_problems(code, ramps):
         if re.search(r"b\.(?:box|ellipsoid|tube|column|line|set_v)\((?:[^()]|\([^()]*\))*,\s*%s\s*(?:,[^,()]*)?\)" % name, body):
             problems.append("`%s` is a whole ramp used as paint. Use b.pick(%s, t, jitter) in a lambda or "
                             "b.noisy(%s) instead." % (name, name, name))
+    if "b.remove_floating()" not in body:
+        problems.append("Call `b.remove_floating()` after the last shape (before shading) so no stray voxels float.")
     shapes = sum(body.count(s) for s in SHAPES)
     if shapes < MIN_SHAPES:
         problems.append("Only %d shape calls. Add much more detail: at least %d (horns, claws, plates, teeth, "
