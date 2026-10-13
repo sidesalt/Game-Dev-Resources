@@ -1,0 +1,33 @@
+{
+  "_about": "The three Cinder AI teams. Each device sets \"team\" in ~/.cinder/config.json. Teams share the repo but have different jobs, sizes and first-choice free models, so they don't make the same monsters or compete for the same free limits. All of them use free cloud models only.",
+  "A": {
+    "name": "Team A",
+    "device": "NewBigSalt (DigitalSalt PC)",
+    "job": "Bosses and big monsters: one huge, memorable creature per round, with a signature weapon or body feature, as the centrepiece of a dungeon.",
+    "grid": "60 to 96 on the longest side",
+    "providers": ["Ollama Cloud", "OVHcloud", "OpenRouter"],
+    "models": ["nemotron-3-ultra", "gpt-oss:120b", "Qwen3.5-397B-A17B"],
+    "every_hours": 6,
+    "rounds": ["make"]
+  },
+  "B": {
+    "name": "Team B",
+    "device": "BigOldSalt (old laptop)",
+    "job": "Regular enemies: the soldiers, beasts and undead the player fights most, medium sized (like the hound and the ghoul), each with a clear fighting role.",
+    "grid": "30 to 64 on the longest side",
+    "providers": ["OVHcloud", "Ollama Cloud", "OpenRouter"],
+    "models": ["Qwen3.5-397B-A17B", "Meta-Llama-3_3-70B-Instruct", "gpt-oss:120b"],
+    "every_hours": 4,
+    "rounds": ["make"]
+  },
+  "C": {
+    "name": "Team C",
+    "device": "OldLilSalt (phone)",
+    "job": "Small creatures and critters (wisps, rats, imps, beetles, ash crows), plus polishing existing models.",
+    "grid": "16 to 40 on the longest side",
+    "providers": ["OVHcloud", "Ollama Cloud", "OpenRouter"],
+    "models": ["gpt-oss-120b", "gemma4:31b", "gpt-oss:20b"],
+    "every_hours": 3,
+    "rounds": ["make", "push"]
+  }
+}

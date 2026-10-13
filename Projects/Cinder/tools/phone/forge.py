@@ -114,14 +114,19 @@ def ovh_free(url):
 class Brain:
     """Talks to the best AI that is available, and remembers which one worked."""
 
-    def __init__(self, cfg, local_chat, say):
+    def __init__(self, cfg, local_chat, say, team=None):
         self.cfg, self.local_chat, self.say = cfg, local_chat, say
+        self.team = team or {}
         self.working = None  # (provider, model) that last answered
 
     def candidates(self):
         if self.working:
             yield self.working
-        for p in self.cfg.get("providers", []) + PROVIDERS:
+        order = self.team.get("providers", [])
+        providers = sorted(self.cfg.get("providers", []) + PROVIDERS,
+                           key=lambda p: order.index(p["name"]) if p["name"] in order else len(order))
+        liked = self.team.get("models", [])
+        for p in providers:
             key = key_for(self.cfg, p["key"]) if p.get("key") else ""
             if p.get("key") and not key:
                 continue
@@ -134,6 +139,7 @@ class Brain:
                 except (urllib.error.URLError, OSError, ValueError) as error:
                     self.say("Could not list OpenRouter's free models (%s)." % error)
                     continue
+            models = [m for m in liked if m in models] + [m for m in models if m not in liked]
             for model in models:
                 yield (dict(p, key_value=key), model)
 
@@ -226,7 +232,7 @@ RULES = """Rules for the recipe file:
 - Reply with only the complete file in one ```gdscript code block.""" % (MAX_AXIS, MIN_SHAPES)
 
 
-def concept_prompt(root, existing, idea):
+def concept_prompt(root, existing, idea, team=None):
     design = read(root, "docs", "CINDERDEEP_GAME_DESIGN.md")[:6000]
     system = ("You are the lead creature designer for Cinderdeep, a dark ember-and-ash soulslike fantasy game with "
               "a voxel art style. You invent monsters that are memorable, readable and fun to fight.")
@@ -240,6 +246,9 @@ def concept_prompt(root, existing, idea):
         ' "parts": ["10-20 concrete build steps, big forms first, with rough voxel positions and sizes"]}'
     ) % (design, existing, ("The player asked for: " + idea) if idea else
          "Invent one new monster that fits the world and is different from those above.")
+    if team:
+        user += ("\n\nYou design for %s. Their job: %s Grid size: %s."
+                 % (team.get("name", "the team"), team.get("job", ""), team.get("grid", "")))
     return system, user
 
 
@@ -422,11 +431,11 @@ def finish(code, plan):
     return "extends RefCounted\n%s\n\n%s\n" % (header(plan), "\n".join(rest).rstrip())
 
 
-def forge(cfg, root, brain, existing, idea, say, tries=4):
+def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
     """Returns (name, title, code) for a new recipe that passed every check."""
     _, ramps = palette(root)
     say("Designing a new monster...")
-    plan = extract_json(brain.ask(*concept_prompt(root, existing, idea), temperature=0.9))
+    plan = extract_json(brain.ask(*concept_prompt(root, existing, idea, team), temperature=0.9))
     names = set(f[:-3] for f in os.listdir(os.path.join(root, "assets", "recipes")) if f.endswith(".gd"))
     name = clean_name(plan.get("name") or plan.get("title"), names)
     plan["name"] = name

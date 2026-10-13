@@ -396,6 +396,12 @@ def cmd_ask(cfg, args):
 BRAINS = {}
 
 
+def team(cfg):
+    """This device's team from teams.json (A, B or C), or {} if none is set."""
+    teams = load_json(os.path.join(project(cfg), "teams.json"), {})
+    return teams.get(str(cfg.get("team", "")).upper(), {})
+
+
 def brain(cfg):
     """One shared Brain per run, so it remembers which free model answered."""
     if id(cfg) in BRAINS:
@@ -405,7 +411,7 @@ def brain(cfg):
         start_ai(cfg)
         ensure_model(cfg, model)
         return chat(cfg, model, system, user, temperature, False, num_ctx=16384)
-    BRAINS[id(cfg)] = forge.Brain(cfg, local_chat, say)
+    BRAINS[id(cfg)] = forge.Brain(cfg, local_chat, say, team(cfg))
     return BRAINS[id(cfg)]
 
 
@@ -415,12 +421,14 @@ def existing_assets(cfg):
 
 def make_here(cfg, ai, idea):
     """Designs, writes and checks one monster; commits it. Returns its name."""
-    name, title, code = forge.forge(cfg, project(cfg), ai, existing_assets(cfg), idea, say)
+    crew = team(cfg)
+    name, title, code = forge.forge(cfg, project(cfg), ai, existing_assets(cfg), idea, say, team=crew)
     path = os.path.join(project(cfg), "assets", "recipes", name + ".gd")
     with open(path, "w", encoding="utf-8") as f:
         f.write(code)
     git(cfg, "add", path)
-    git(cfg, "commit", "-q", "-m", "Cinder AI: new monster %s - %s" % (name, title))
+    who = (" (%s)" % crew["name"]) if crew else ""
+    git(cfg, "commit", "-q", "-m", "Cinder AI%s: new monster %s - %s" % (who, name, title))
     say("Made %s (%s)." % (title, name))
     return name
 
@@ -456,6 +464,32 @@ def cmd_make(cfg, args):
             say("Problem: %s" % error)
     if made:
         publish(cfg)
+
+
+def cmd_team(cfg, args):
+    crew = team(cfg)
+    if not crew:
+        say("No team set. Put \"team\": \"A\", \"B\" or \"C\" in ~/.cinder/config.json (see teams.json).")
+        return
+    say("%s on %s" % (crew["name"], crew["device"]))
+    say("Job: " + crew["job"])
+    say("Size: %s. Works every %s hours: %s." % (crew["grid"], crew["every_hours"], ", ".join(crew["rounds"])))
+    say("Free AI, first choice: %s (%s)" % (crew["providers"][0], crew["models"][0]))
+
+
+def cmd_auto(cfg, args):
+    """Runs forever: every few hours the team does its job (see teams.json)."""
+    INTERACTIVE[0] = False
+    while True:
+        cfg = config()
+        crew = team(cfg)
+        if not crew:
+            say("auto needs a team; type: team")
+            return
+        for job in crew.get("rounds", ["make"]):
+            say("%s %s: %s" % (time.strftime("%Y-%m-%d %H:%M"), crew["name"], job))
+            run(cfg, job, [])
+        time.sleep(float(crew.get("every_hours", 4)) * 3600)
 
 
 def cmd_requests(cfg, args):
@@ -528,6 +562,7 @@ HELP = """Commands:
 make - the AI invents a brand new monster and builds it
 make 3 - three new monsters
 make a lava golem with chains - a new monster from your idea
+team - what this device's team does
 push - the AI writes a plan, improves the next model and saves it
 push 5 - do that 5 times
 improve hound - plan and improve one model you name
@@ -542,7 +577,7 @@ def cmd_help(cfg, args):
     say(HELP)
 
 
-COMMANDS = {"help": cmd_help, "make": cmd_make, "monster": cmd_make, "make-requests": cmd_requests, "push": cmd_push, "improve": cmd_push, "ask": cmd_ask, "look": cmd_look, "undo": cmd_undo,
+COMMANDS = {"help": cmd_help, "make": cmd_make, "monster": cmd_make, "make-requests": cmd_requests, "team": cmd_team, "auto": cmd_auto, "push": cmd_push, "improve": cmd_push, "ask": cmd_ask, "look": cmd_look, "undo": cmd_undo,
             "status": cmd_status, "stop": cmd_stop}
 
 
@@ -563,7 +598,36 @@ def cmd_menu(cfg, args):
             run(cfg, name, extra)
 
 
+LOCK_PATH = os.path.join(HOME, ".cinder", "busy.lock")
+
+
+def take_lock():
+    """One job at a time per device (the timer and Odysseus chat share a repo)."""
+    try:
+        if time.time() - os.path.getmtime(LOCK_PATH) > 2 * 3600:  # left over from a crash
+            os.remove(LOCK_PATH)
+    except OSError:
+        pass
+    try:
+        os.makedirs(os.path.dirname(LOCK_PATH), exist_ok=True)
+        os.close(os.open(LOCK_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+        return True
+    except FileExistsError:
+        return False
+
+
 def run(cfg, name, args):
+    quick = name in ("help", "look", "status", "team", "auto", "menu")
+    # Only the background timer waits for the lock; chat and terminal answer right away.
+    background = not INTERACTIVE[0] and SINK[-1] is SINK[0]
+    if not quick:
+        tries = 60 if background else 1
+        while not take_lock():
+            tries -= 1
+            if tries <= 0:
+                say("The team is busy with another job right now. Try again in a few minutes.")
+                return
+            time.sleep(60)
     try:
         (cmd_menu if name == "menu" else COMMANDS[name])(cfg, args)
     except KeyboardInterrupt:
@@ -571,6 +635,12 @@ def run(cfg, name, args):
     except Exception as error:  # plain words for a non-programmer
         say("Problem: %s" % error)
         say("Nothing was broken. Try again, or type: stop")
+    finally:
+        if not quick:
+            try:
+                os.remove(LOCK_PATH)
+            except OSError:
+                pass
 
 
 # ---------------------------------------------------------------- Odysseus
@@ -595,6 +665,8 @@ def serve(cfg):
 
     def command_for(text):
         words = re.sub(r"[^\w\s#.]", " ", text.lower()).split()
+        if words and words[0] == "auto":
+            return "team", []  # the timer runs by itself in the background, never inside a chat
         if words and words[0] in COMMANDS:
             return words[0], words[1:]
         return "help", []
