@@ -37,6 +37,11 @@ improving the Cinderdeep voxel models. Claude isn't needed for this.
 
 Anything else you type just shows the list again, so Cinder never guesses what you meant.
 
+## Teams
+
+Each machine is a team with its own job (A: PC bosses, B: laptop enemies, C: phone critters). See **TEAMS.md**.
+The setup line above asks which team the machine is.
+
 ## New monsters, made automatically for $0
 
 - **`make` costs nothing and needs no keys.** GitHub makes the monster using OVHcloud's free AI tier
