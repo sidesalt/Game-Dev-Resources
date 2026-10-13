@@ -170,7 +170,7 @@ class Brain:
                     self.say("Using %s: %s" % (provider["name"], model))
                 self.working = (provider, model)
                 return text.strip()
-        if self.cfg.get("make_local", not self.cfg.get("manage_ai")):
+        if not self.cfg.get("cloud_only", True) and self.cfg.get("make_local", not self.cfg.get("manage_ai")):
             model = self.cfg.get("make_model") or self.cfg["model"]
             self.say("No free cloud AI answered, using the local AI %s (slower, simpler results)." % model)
             return self.local_chat(model, system, user, temperature)

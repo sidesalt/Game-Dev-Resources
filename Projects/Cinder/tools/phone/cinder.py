@@ -47,6 +47,9 @@ DEFAULTS = {
     # Set to false for thinking models (qwen3.5, gpt-oss) so they answer directly.
     "think": None,
     "port": 8740,
+    # Free cloud models only: never start or use local Ollama, so the PC's GPU
+    # stays free for gaming. Set to false to allow the local AI again.
+    "cloud_only": True,
 }
 # key: (default, min, max) — must match assets/tuning.gd
 NUMBERS = {
@@ -155,7 +158,7 @@ def ai_running(cfg):
 
 
 def start_ai(cfg):
-    if ai_running(cfg):
+    if cfg.get("cloud_only") or ai_running(cfg):
         return
     if not cfg["manage_ai"]:
         raise RuntimeError("Your local AI (Ollama) is not running. Start your AI PC stack first.")
@@ -193,6 +196,13 @@ def ensure_model(cfg, model):
 
 
 def chat(cfg, model, system, user, temperature, json_mode, num_ctx=2048):
+    if cfg.get("cloud_only"):
+        hint = "\n\nReply with one JSON object only, no other text." if json_mode else ""
+        reply = brain(cfg).ask(system, user + hint, temperature)
+        if json_mode:
+            match = re.search(r"\{.*\}", reply, re.S)
+            return match.group(0) if match else reply
+        return reply
     body = {
         "model": model,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -280,8 +290,10 @@ def improve(cfg, asset, wish, focus="whatever helps most"):
     current = {k: v[0] for k, v in NUMBERS.items()}
     current.update({"tint": "#ff7a2a", "notes": ""})
     current.update(load_json(path, {}))
-    model = pick_model(cfg)
-    ensure_model(cfg, model)
+    model = None
+    if not cfg.get("cloud_only"):
+        model = pick_model(cfg)
+        ensure_model(cfg, model)
     name = asset.replace("_", " ")
     say("Writing a plan for %s..." % name)
     brief = make_brief(cfg, model, asset, current, wish, focus)
@@ -381,12 +393,20 @@ def cmd_ask(cfg, args):
         publish(cfg)
 
 
+BRAINS = {}
+
+
 def brain(cfg):
+    """One shared Brain per run, so it remembers which free model answered."""
+    if id(cfg) in BRAINS:
+        return BRAINS[id(cfg)]
+
     def local_chat(model, system, user, temperature):
         start_ai(cfg)
         ensure_model(cfg, model)
         return chat(cfg, model, system, user, temperature, False, num_ctx=16384)
-    return forge.Brain(cfg, local_chat, say)
+    BRAINS[id(cfg)] = forge.Brain(cfg, local_chat, say)
+    return BRAINS[id(cfg)]
 
 
 def existing_assets(cfg):
