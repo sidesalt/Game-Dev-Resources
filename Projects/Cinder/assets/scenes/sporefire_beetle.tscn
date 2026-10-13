@@ -1,0 +1,25 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="ArrayMesh" path="res://assets/vox/sporefire_beetle.vox" id="1_ch0hb"]
+[ext_resource type="Script" path="res://assets/ember_light.gd" id="2_xyl37"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_rtvau"]
+points = PackedVector3Array(-0.422857, 0.00558471, -0.1875, 0.0971896, 0.479077, 0.0380575, 0.422857, 0.00558471, -0.1875, 0.0415905, 0.020923, 0.23253, -0.444444, 0.159808, 0.260367, 0.444444, 0.159758, 0.260367, -0.0625, 0.43121, -0.201473, -0.388845, 0.354126, 0.121423, 0.388845, 0.256891, -0.100695, -0.432518, 0, 0.186237, 0.432518, 0, 0.186237, -0.0416776, 0.479077, 0.107529, -0.444444, 0.0764568, -0.197956, 0.388845, 0.354076, 0.121423, 0.444444, 0.0764568, -0.197956, 0.0625, 0.481579, -0.151657, -0.0625, 0.481289, -0.151446, -0.388845, 0.256942, -0.100743, 0.350445, 0.3438, 0.173753, 0.0625, 0.431437, -0.201748, -0.350275, 0.3438, 0.173677, -0.416601, 0.256942, -0.0451658, 0.416601, 0.256891, -0.0451182, -0.0971896, 0.479077, 0.0380575, 0.0415905, 0.479077, 0.107529, -0.0416776, 0.020923, 0.23253, -0.421222, 0.125, 0.247667, 0.421222, 0.125, 0.247667, -0.125, 0.43121, -0.151446, 0.125, 0.431255, -0.151403)
+
+[node name="SporefireBeetle" type="Node3D"]
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_ch0hb")
+
+[node name="Body" type="StaticBody3D" parent="."]
+
+[node name="Shape" type="CollisionShape3D" parent="Body"]
+shape = SubResource("ConvexPolygonShape3D_rtvau")
+
+[node name="EmberLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0121941, 0.23992, 0.0651613)
+light_color = Color(1, 0.625645, 0.301902, 1)
+light_energy = 0.949038
+omni_range = 1.79599
+omni_attenuation = 1.4
+script = ExtResource("2_xyl37")

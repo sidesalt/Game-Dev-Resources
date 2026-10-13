@@ -1,0 +1,16 @@
+[remap]
+
+importer="cinder_voxel.vox_mesh"
+type="ArrayMesh"
+uid="uid://dbybig30277hi"
+path="res://.godot/imported/sporefire_beetle.vox-c372d2a9e7fe98d3d320d5ccdac2cfab.mesh"
+
+[deps]
+
+source_file="res://assets/vox/sporefire_beetle.vox"
+dest_files=["res://.godot/imported/sporefire_beetle.vox-c372d2a9e7fe98d3d320d5ccdac2cfab.mesh"]
+
+[params]
+
+voxel_size=0.03125
+pivot=Vector3(0.5, 0, 0.5)
