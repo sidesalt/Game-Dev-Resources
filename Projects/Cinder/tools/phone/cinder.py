@@ -335,10 +335,18 @@ def sync(cfg):
     git(cfg, "pull", "-q", "--rebase", "--autostash", "origin", cfg["branch"])
 
 
-def publish(cfg):
+def publish(cfg, quiet=False):
     say("Saving to GitHub...")
-    git(cfg, "push", "-q", "origin", cfg["branch"])
-    say("Saved. New pictures appear on GitHub in about 5-10 minutes. Type: look")
+    for attempt in range(3):  # another team or GitHub's rebuild may have pushed in the meantime
+        git(cfg, "pull", "-q", "--rebase", "--autostash", "origin", cfg["branch"], check=False)
+        git(cfg, "push", "-q", "origin", cfg["branch"], check=False)
+        if "ahead" not in git(cfg, "status", "-sb", check=False).splitlines()[0]:
+            break
+        time.sleep(5)
+    else:
+        raise RuntimeError("GitHub did not accept the save after 3 tries. It is kept here and goes up next time.")
+    if not quiet:
+        say("Saved. New pictures appear on GitHub in about 5-10 minutes. Type: look")
 
 
 def cmd_push(cfg, args):
@@ -451,8 +459,7 @@ def cmd_make(cfg, args):
         git(cfg, "add", path)
         git(cfg, "commit", "-q", "-m", "Cinder AI: asked GitHub for %d new monster(s)%s" % (count, (": " + idea) if idea else ""))
         say("Asked GitHub to make %d new monster(s) with free AI." % count)
-        say("Saving to GitHub...")
-        git(cfg, "push", "-q", "origin", cfg["branch"])
+        publish(cfg, quiet=True)
         say("Sent. The new monster and its picture appear in about 15 minutes. Type: look")
         return
     ai, made = brain(cfg), 0

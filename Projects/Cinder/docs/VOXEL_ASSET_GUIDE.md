@@ -42,6 +42,14 @@ This guide is sent to the AI with every `make` request. Edit it to teach the AI 
 - Stray glowing specks floating above the head ruin the read. Finish with `b.remove_floating()` as the very
   last shape step (before shading), and keep eyes touching the head.
 
+## Lessons from the Charred Sporeling (Team C, 2026-10-12)
+- It read as a glowing rock pile. Every creature needs a **face**: a head (or front end) with two bright eyes, and
+  a mouth, mandibles or beak. It also needs something to move on: legs, claws, a tail or wings. Even a "mound"
+  creature gets stubby legs and a face peeking out.
+- Don't stack flat tiers like a cake. Tilt and overlap the masses, and make the top lumpy.
+- Glow is for small accents. Several big glowing cubes on top look like candles; glowing cracks, eyes and pod
+  openings read far better.
+
 ## Painting
 - A shape's `paint` is ONE palette index or a lambda `func(p: Vector3i) -> int`. Never pass a whole ramp (the value
   from `b.ramp(...)`): use `b.pick(ramp, t, jitter)` inside a lambda, or `b.noisy(ramp, ...)`.
