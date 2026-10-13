@@ -1,11 +1,11 @@
 {
   "scale": 1.0,
-  "glow": 1.0,
+  "glow": 1.1,
   "brightness": 1.0,
-  "tint": "#ff7a2a",
-  "tint_strength": 0.0,
-  "saturation": 1.0,
+  "tint_strength": 0.15,
+  "saturation": 1.1,
   "wear": 0.0,
   "seed": 0,
-  "notes": ""
+  "tint": "#ff7a2a",
+  "notes": "Increased tint_strength, saturation, and glow slightly."
 }
