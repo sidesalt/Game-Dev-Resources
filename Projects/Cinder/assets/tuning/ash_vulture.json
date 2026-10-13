@@ -1,11 +1,11 @@
 {
   "scale": 1.0,
   "glow": 1.0,
-  "brightness": 1.0,
-  "tint": "#ff7a2a",
-  "tint_strength": 0.0,
+  "brightness": 0.9,
+  "tint_strength": 0.1,
   "saturation": 1.0,
-  "wear": 0.0,
+  "wear": 0.15,
   "seed": 0,
-  "notes": ""
+  "tint": "#ff7a2a",
+  "notes": "Added wear, dimmed, faint orange tint"
 }
