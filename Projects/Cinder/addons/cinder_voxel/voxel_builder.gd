@@ -219,15 +219,26 @@ func erode(chance: float, min_y := 0) -> void:
 		return current)
 
 
-## Deletes voxels that are not connected (face to face) to the bottom layer.
+## Deletes voxels that are not connected (face to face) to the lowest filled
+## layer: the ground for standing models, the underside for flying ones.
 func remove_floating() -> void:
 	var size := model.size
 	var seen := PackedByteArray()
 	seen.resize(model.voxels.size())
 	var stack: Array[Vector3i] = []
+	var low := 0
+	for y in size.y:
+		low = y
+		var found := false
+		for z in size.z:
+			for x in size.x:
+				if model.is_solid(Vector3i(x, y, z)):
+					found = true
+		if found:
+			break
 	for z in size.z:
 		for x in size.x:
-			var p := Vector3i(x, 0, z)
+			var p := Vector3i(x, low, z)
 			if model.is_solid(p):
 				seen[model.index_of(p)] = 1
 				stack.append(p)

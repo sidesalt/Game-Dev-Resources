@@ -19,7 +19,8 @@
     "rounds": [
       "make"
     ],
-    "min_shapes": 18
+    "min_shapes": 18,
+    "min_voxels": 2500
   },
   "B": {
     "name": "Team B",
@@ -40,7 +41,8 @@
     "rounds": [
       "make"
     ],
-    "min_shapes": 24
+    "min_shapes": 24,
+    "min_voxels": 6000
   },
   "C": {
     "name": "Team C",
@@ -62,6 +64,7 @@
       "make",
       "push"
     ],
-    "min_shapes": 12
+    "min_shapes": 12,
+    "min_voxels": 400
   }
 }

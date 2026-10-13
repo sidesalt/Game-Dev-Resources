@@ -391,7 +391,7 @@ def gdparse_problems(code):
     return ["GDScript syntax error: " + (result.stderr or result.stdout).strip().splitlines()[-1][:300]]
 
 
-def godot_problems(cfg, root, name):
+def godot_problems(cfg, root, name, min_voxels=1500):
     """Builds the recipe for real when Godot is installed (GitHub always has it)."""
     godot = godot_path(cfg)
     if not godot:
@@ -402,13 +402,14 @@ def godot_problems(cfg, root, name):
                              "--force", "--only=" + name], capture_output=True, text=True, timeout=600)
     log = result.stdout + result.stderr
     built = re.search(r"recipe %s -> .* \((\d+) voxels" % re.escape(name), log)
-    if built and int(built.group(1)) >= 1500:
+    if built and int(built.group(1)) >= min_voxels:
         return []
     if built:
-        return ["The model only has %s voxels. Make it bigger and much more detailed." % built.group(1)]
+        return ["The model only has %s voxels (at least %d needed). Make it bigger and much more detailed."
+                % (built.group(1), min_voxels)]
     if "did not return a model" in log:
-        return ["The model came out empty. Usually nothing touches the ground row (y = 0), so b.remove_floating() "
-                "deleted everything: make the feet, legs or belly reach y = 0 and keep every part connected."]
+        return ["The model came out empty: check that shapes are inside the grid and that paint lambdas return a "
+                "palette index (not 0) for the body."]
     # The real messages ("SCRIPT ERROR: Parse Error: ..."), not Godot's "at: file:line" pointers.
     errors = [line.strip() for line in log.splitlines()
               if "ERROR" in line and "FAILED " not in line and not line.strip().startswith("at:")]
@@ -460,11 +461,12 @@ def finish(code, plan):
     return "extends RefCounted\n%s\n\n%s\n" % (header(plan), "\n".join(rest).rstrip())
 
 
-def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
+def forge(cfg, root, brain, existing, idea, say, tries=6, team=None):
     """Returns (name, title, code) for a new recipe that passed every check."""
     _, ramps = palette(root)
     sizes = ramp_counts(root)
     least = int((team or {}).get("min_shapes", MIN_SHAPES))
+    few = int((team or {}).get("min_voxels", 1500))
     say("Designing a new monster...")
     plan = extract_json(brain.ask(*concept_prompt(root, existing, idea, team), temperature=0.9))
     names = set(f[:-3] for f in os.listdir(os.path.join(root, "assets", "recipes")) if f.endswith(".gd"))
@@ -481,7 +483,7 @@ def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
         code = finish(extract_code(reply), plan)
         problems = static_problems(code, ramps, sizes, least) or gdparse_problems(code)
         if not problems:
-            problems = check_in_godot(cfg, root, name, code)
+            problems = check_in_godot(cfg, root, name, code, few)
         if not problems:
             good = code
             break
@@ -504,7 +506,7 @@ def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
                          "more striking without breaking any rule: more secondary forms, finer surface detail, "
                          "better colour variation and glow. Reply with the whole file." % good, temperature=0.4)
     better = finish(extract_code(polished), plan)
-    issues = static_problems(better, ramps, sizes, least) or gdparse_problems(better) or check_in_godot(cfg, root, name, better)
+    issues = static_problems(better, ramps, sizes, least) or gdparse_problems(better) or check_in_godot(cfg, root, name, better, few)
     if not issues:
         good = better
     else:
@@ -512,12 +514,12 @@ def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
     return name, plan.get("title", name), good
 
 
-def check_in_godot(cfg, root, name, code):
+def check_in_godot(cfg, root, name, code, min_voxels=1500):
     path = os.path.join(root, "assets", "recipes", name + ".gd")
     with open(path, "w", encoding="utf-8") as f:
         f.write(code)
     try:
-        problems = godot_problems(cfg, root, name)
+        problems = godot_problems(cfg, root, name, min_voxels)
     finally:
         os.remove(path)
         if os.path.exists(path + ".uid"):  # Godot adds one for every script it loads
