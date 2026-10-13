@@ -610,7 +610,9 @@ def lock_owner_gone():
             pid = int(f.read().strip() or 0)
     except (OSError, ValueError):
         return True
-    if os.name != "posix" or not pid:
+    if not pid:  # no owner written: abandoned, unless it was made a moment ago
+        return time.time() - os.path.getmtime(LOCK_PATH) > 60
+    if os.name != "posix":
         return False  # on Windows, os.kill(pid, 0) would end the process; rely on the 2 hour limit
     try:
         os.kill(pid, 0)
@@ -645,6 +647,8 @@ def run(cfg, name, args):
     if not quick:
         tries = 60 if background else 1
         while not take_lock():
+            if background and tries == 60:
+                say("Another job is running on this machine; waiting for it to finish...")
             tries -= 1
             if tries <= 0:
                 say("The team is busy with another job right now. Try again in a few minutes.")
