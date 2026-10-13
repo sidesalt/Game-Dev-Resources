@@ -3,8 +3,8 @@
 # Paste this line into PowerShell (Win + R, type powershell, Enter):
 #   irm https://raw.githubusercontent.com/sidesalt/Game-Dev-Resources/ccr-031f1132-nxzsb1/Projects/Cinder/tools/odysseus/install-cinder.ps1 | iex
 #
-# It asks which team this machine is (A = NewBigSalt PC, B = BigOldSalt laptop,
-# see Projects/Cinder/teams.json), then sets up the same thing as the phone:
+# It asks which team this machine is (B = BoS, the old laptop; see
+# Projects/Cinder/teams.json), then sets up the same thing as the phone:
 # Cinder (the "cinder" model in Odysseus), Godot to test-build every monster,
 # the free cloud models in Odysseus, and the team's timer. All AI runs on free
 # cloud models, so this machine's GPU stays free for gaming. It never changes
@@ -64,9 +64,8 @@ git -C $Dir push --dry-run -q origin $Branch
 Step "4/7 Which team is this machine?"
 $Team = $env:CINDER_TEAM
 if (-not $Team) {
-    Write-Host "  A = NewBigSalt (DigitalSalt PC): bosses and big monsters"
-    Write-Host "  B = BigOldSalt (old laptop): regular enemies"
-    $Team = (Read-Host "Type A or B").Trim().ToUpper()
+    Write-Host "  B = BoS (old laptop): bosses and big monsters   (A and C are the phones)"
+    $Team = (Read-Host "Type the team letter (Enter = B)").Trim().ToUpper()
 }
 if ($Team -notin @("A", "B", "C")) { $Team = "B" }
 Write-Host "This machine is Team $Team."

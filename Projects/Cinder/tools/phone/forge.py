@@ -208,6 +208,16 @@ def palette(root):
     return text, set(re.findall(r"^const (\w+)", text, re.M))
 
 
+def ramp_counts(root):
+    text, _ = palette(root)
+    return {name: len(re.findall(r'"#', body)) for name, body in re.findall(r"^const (\w+) := \[(.*?)\]", text, re.M)}
+
+
+def ramp_sizes(root):
+    """How many colours each CinderPalette ramp has, e.g. "EMBER 6 (index 0-5)"."""
+    return ", ".join("%s %d (index 0-%d)" % (name, n, n - 1) for name, n in ramp_counts(root).items())
+
+
 def read(root, *parts):
     with open(os.path.join(root, *parts), encoding="utf-8") as f:
         return f.read()
@@ -267,8 +277,11 @@ def code_prompt(root, plan, example=True):
               "code that runs first time, and you make highly detailed, beautiful models.\n\n" + RULES
               + "\n\nAsset guide from the art director (follow it closely):\n" + guide(root))
     user = ("VoxelBuilder API:\n```gdscript\n%s\n```\n\nPalette:\n```gdscript\n%s\n```\n\n"
+            "Ramp sizes. A ramp's colours are numbered from 0, never use a higher number, and an emission list "
+            "must have exactly one value per colour: %s\n\n"
             "Example recipe (match its style and quality):\n```gdscript\n%s\n```\n\n"
-            "Write the recipe for this monster:\n%s") % (api_reference(root), pal, hound, json.dumps(plan, indent=1))
+            "Write the recipe for this monster:\n%s") % (api_reference(root), pal, ramp_sizes(root), hound,
+                                                         json.dumps(plan, indent=1))
     return system, user
 
 
@@ -292,10 +305,22 @@ def strip_strings(code):
     return "\n".join(line.split("#", 1)[0] for line in code.splitlines())
 
 
-def static_problems(code, ramps):
-    """Plain checks that keep AI code safe and on the real API."""
+def static_problems(code, ramps, sizes=None):
+    """Plain checks that keep AI code safe and on the real API. `sizes` maps a
+    palette ramp to its number of colours, to catch out-of-range indexes."""
     problems = []
     body = strip_strings(code)
+    for var, ramp, emission in re.findall(r"var (\w+)\s*:?=\s*b\.ramp\(CinderPalette\.(\w+)\s*(?:,\s*\[([^\]]*)\])?", body):
+        n = (sizes or {}).get(ramp)
+        if not n:
+            continue
+        if emission and len([e for e in emission.split(",") if e.strip()]) < n:
+            problems.append("The emission list for `%s` needs %d values (CinderPalette.%s has %d colours)."
+                            % (var, n, ramp, n))
+        for index in set(re.findall(r"\b%s\[(\d+)\]" % re.escape(var), body)):
+            if int(index) >= n:
+                problems.append("`%s[%s]` is out of range: CinderPalette.%s has %d colours (0-%d)."
+                                % (var, index, ramp, n, n - 1))
     if not code.lstrip().startswith("extends RefCounted"):
         problems.append("The file must start with `extends RefCounted`.")
     if not re.search(r"^const SEED := \d+", code, re.M):
@@ -381,8 +406,9 @@ def godot_problems(cfg, root, name):
         return []
     if built:
         return ["The model only has %s voxels. Make it bigger and much more detailed." % built.group(1)]
+    # The real messages ("SCRIPT ERROR: Parse Error: ..."), not Godot's "at: file:line" pointers.
     errors = [line.strip() for line in log.splitlines()
-              if ("ERROR" in line or "error" in line.lower()) and "FAILED " not in line]
+              if "ERROR" in line and "FAILED " not in line and not line.strip().startswith("at:")]
     return ["Godot could not build it: " + " | ".join(errors[-4:])[:600]]
 
 
@@ -434,6 +460,7 @@ def finish(code, plan):
 def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
     """Returns (name, title, code) for a new recipe that passed every check."""
     _, ramps = palette(root)
+    sizes = ramp_counts(root)
     say("Designing a new monster...")
     plan = extract_json(brain.ask(*concept_prompt(root, existing, idea, team), temperature=0.9))
     names = set(f[:-3] for f in os.listdir(os.path.join(root, "assets", "recipes")) if f.endswith(".gd"))
@@ -448,7 +475,7 @@ def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
     good = last_bad = None
     for attempt in range(tries):
         code = finish(extract_code(reply), plan)
-        problems = static_problems(code, ramps) or gdparse_problems(code)
+        problems = static_problems(code, ramps, sizes) or gdparse_problems(code)
         if not problems:
             problems = check_in_godot(cfg, root, name, code)
         if not problems:
@@ -473,7 +500,7 @@ def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
                          "more striking without breaking any rule: more secondary forms, finer surface detail, "
                          "better colour variation and glow. Reply with the whole file." % good, temperature=0.4)
     better = finish(extract_code(polished), plan)
-    issues = static_problems(better, ramps) or gdparse_problems(better) or check_in_godot(cfg, root, name, better)
+    issues = static_problems(better, ramps, sizes) or gdparse_problems(better) or check_in_godot(cfg, root, name, better)
     if not issues:
         good = better
     else:

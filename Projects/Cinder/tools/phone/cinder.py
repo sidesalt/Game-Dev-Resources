@@ -601,16 +601,38 @@ def cmd_menu(cfg, args):
 LOCK_PATH = os.path.join(HOME, ".cinder", "busy.lock")
 
 
-def take_lock():
-    """One job at a time per device (the timer and Odysseus chat share a repo)."""
+def lock_owner_gone():
+    """True when the job that holds the lock no longer runs (killed, phone restarted...)."""
     try:
-        if time.time() - os.path.getmtime(LOCK_PATH) > 2 * 3600:  # left over from a crash
-            os.remove(LOCK_PATH)
+        if time.time() - os.path.getmtime(LOCK_PATH) > 2 * 3600:
+            return True
+        with open(LOCK_PATH) as f:
+            pid = int(f.read().strip() or 0)
+    except (OSError, ValueError):
+        return True
+    if os.name != "posix" or not pid:
+        return False  # on Windows, os.kill(pid, 0) would end the process; rely on the 2 hour limit
+    try:
+        os.kill(pid, 0)
+        return False
+    except ProcessLookupError:
+        return True
     except OSError:
-        pass
+        return False
+
+
+def take_lock():
+    """One job at a time per machine (the timer and Odysseus chat share a repo)."""
+    if os.path.exists(LOCK_PATH) and lock_owner_gone():
+        try:
+            os.remove(LOCK_PATH)
+        except OSError:
+            pass
     try:
         os.makedirs(os.path.dirname(LOCK_PATH), exist_ok=True)
-        os.close(os.open(LOCK_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+        fd = os.open(LOCK_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
         return True
     except FileExistsError:
         return False
