@@ -37,6 +37,8 @@ This guide is sent to the AI with every `make` request. Edit it to teach the AI 
 - The asked-for signature feature (lava cracks, a burning back) must be big and visible in the preview, which
   views the model from the front, 30° to its left and a little above. Put it on the top, front or sides, not only
   the back.
+- The creature must touch the ground: its feet, legs or belly reach y = 0. If nothing does, `b.remove_floating()`
+  deletes the whole model (this happened to the Cinder Maw Centipede).
 - Stray glowing specks floating above the head ruin the read. Finish with `b.remove_floating()` as the very
   last shape step (before shading), and keep eyes touching the head.
 

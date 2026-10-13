@@ -18,7 +18,8 @@
     "every_hours": 4,
     "rounds": [
       "make"
-    ]
+    ],
+    "min_shapes": 18
   },
   "B": {
     "name": "Team B",
@@ -38,7 +39,8 @@
     "every_hours": 6,
     "rounds": [
       "make"
-    ]
+    ],
+    "min_shapes": 24
   },
   "C": {
     "name": "Team C",
@@ -59,6 +61,7 @@
     "rounds": [
       "make",
       "push"
-    ]
+    ],
+    "min_shapes": 12
   }
 }

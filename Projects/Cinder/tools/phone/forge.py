@@ -305,7 +305,7 @@ def strip_strings(code):
     return "\n".join(line.split("#", 1)[0] for line in code.splitlines())
 
 
-def static_problems(code, ramps, sizes=None):
+def static_problems(code, ramps, sizes=None, min_shapes=MIN_SHAPES):
     """Plain checks that keep AI code safe and on the real API. `sizes` maps a
     palette ramp to its number of colours, to catch out-of-range indexes."""
     problems = []
@@ -366,9 +366,9 @@ def static_problems(code, ramps, sizes=None):
     if "b.remove_floating()" not in body:
         problems.append("Call `b.remove_floating()` after the last shape (before shading) so no stray voxels float.")
     shapes = sum(body.count(s) for s in SHAPES)
-    if shapes < MIN_SHAPES:
+    if shapes < min_shapes:
         problems.append("Only %d shape calls. Add much more detail: at least %d (horns, claws, plates, teeth, "
-                        "spikes, cracks...)." % (shapes, MIN_SHAPES))
+                        "spikes, cracks...)." % (shapes, min_shapes))
     boxes, organic = body.count("b.box("), body.count("b.ellipsoid(") + body.count("b.tube(")
     if boxes > organic:
         problems.append("Too boxy (%d boxes, %d ellipsoids/tubes). Build bodies, heads and limbs from ellipsoids and "
@@ -406,6 +406,9 @@ def godot_problems(cfg, root, name):
         return []
     if built:
         return ["The model only has %s voxels. Make it bigger and much more detailed." % built.group(1)]
+    if "did not return a model" in log:
+        return ["The model came out empty. Usually nothing touches the ground row (y = 0), so b.remove_floating() "
+                "deleted everything: make the feet, legs or belly reach y = 0 and keep every part connected."]
     # The real messages ("SCRIPT ERROR: Parse Error: ..."), not Godot's "at: file:line" pointers.
     errors = [line.strip() for line in log.splitlines()
               if "ERROR" in line and "FAILED " not in line and not line.strip().startswith("at:")]
@@ -461,6 +464,7 @@ def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
     """Returns (name, title, code) for a new recipe that passed every check."""
     _, ramps = palette(root)
     sizes = ramp_counts(root)
+    least = int((team or {}).get("min_shapes", MIN_SHAPES))
     say("Designing a new monster...")
     plan = extract_json(brain.ask(*concept_prompt(root, existing, idea, team), temperature=0.9))
     names = set(f[:-3] for f in os.listdir(os.path.join(root, "assets", "recipes")) if f.endswith(".gd"))
@@ -475,7 +479,7 @@ def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
     good = last_bad = None
     for attempt in range(tries):
         code = finish(extract_code(reply), plan)
-        problems = static_problems(code, ramps, sizes) or gdparse_problems(code)
+        problems = static_problems(code, ramps, sizes, least) or gdparse_problems(code)
         if not problems:
             problems = check_in_godot(cfg, root, name, code)
         if not problems:
@@ -500,7 +504,7 @@ def forge(cfg, root, brain, existing, idea, say, tries=4, team=None):
                          "more striking without breaking any rule: more secondary forms, finer surface detail, "
                          "better colour variation and glow. Reply with the whole file." % good, temperature=0.4)
     better = finish(extract_code(polished), plan)
-    issues = static_problems(better, ramps, sizes) or gdparse_problems(better) or check_in_godot(cfg, root, name, better)
+    issues = static_problems(better, ramps, sizes, least) or gdparse_problems(better) or check_in_godot(cfg, root, name, better)
     if not issues:
         good = better
     else:
