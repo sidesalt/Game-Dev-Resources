@@ -1,0 +1,25 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="ArrayMesh" path="res://assets/vox/charred_sporeling.vox" id="1_rdyfb"]
+[ext_resource type="Script" path="res://assets/ember_light.gd" id="2_4w67m"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_pbvea"]
+points = PackedVector3Array(0.2813, 0.127545, 0.155174, -0.0938, 0.132646, -0.30009, -0.122829, 0.0938, -0.273958, -0.0938, 0.554801, 0.0937817, -0.249989, 0.128864, 0.25, 0.257921, 0.193522, -0.257933, 0.257921, -0.0049603, -0.0396437, 0.0938, 0.554801, -0.0937817, -0.287629, 0.282738, -0.128935, -0.257859, -0.0049603, -0.0396437, 0.228151, 0.282738, 0.228107, 0.0938, 0.0669735, 0.243856, -0.0938, 0.554801, -0.0937817, -0.0938, 0.188944, 0.30009, 0.287691, 0.282738, 0.0991714, 0.0938, 0.554801, 0.0937817, -0.257859, 0.193522, -0.25787, -0.0351487, 0.256377, -0.2813, 0.12442, 0.0625, -0.248912, -0.257859, 0.193522, 0.25787, -0.154751, 0.0313, 0.183678, 0.249989, 0.128901, 0.25, 0.257921, -0.0049603, 0.0396437, -0.307711, 0.157749, -0.125, 0.0615378, 0.256377, 0.2813, -0.257859, 0.322333, 0.0991714, 0.300207, 0.132616, -0.0938, 0.257921, 0.282738, -0.188401, -0.257859, -0.0049603, 0.0396437, 0.125, 0.157714, -0.307739, 0.125, 0.465496, -0.153839, 0.249989, 0.128901, -0.25)
+
+[node name="CharredSporeling" type="Node3D"]
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_rdyfb")
+
+[node name="Body" type="StaticBody3D" parent="."]
+
+[node name="Shape" type="CollisionShape3D" parent="Body"]
+shape = SubResource("ConvexPolygonShape3D_pbvea")
+
+[node name="EmberLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00361845, 0.339618, 0.114433)
+light_color = Color(1, 0.646631, 0.32728, 1)
+light_energy = 0.916441
+omni_range = 1.72
+omni_attenuation = 1.4
+script = ExtResource("2_4w67m")

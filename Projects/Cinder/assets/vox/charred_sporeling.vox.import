@@ -1,0 +1,16 @@
+[remap]
+
+importer="cinder_voxel.vox_mesh"
+type="ArrayMesh"
+uid="uid://cdm358jq7up0e"
+path="res://.godot/imported/charred_sporeling.vox-907993b1a3ccb15b78830ff8d52f57c2.mesh"
+
+[deps]
+
+source_file="res://assets/vox/charred_sporeling.vox"
+dest_files=["res://.godot/imported/charred_sporeling.vox-907993b1a3ccb15b78830ff8d52f57c2.mesh"]
+
+[params]
+
+voxel_size=0.03125
+pivot=Vector3(0.5, 0, 0.5)
